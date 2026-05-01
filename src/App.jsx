@@ -466,7 +466,7 @@ function FinalStatusPanel({candidate,finalStatus,evaluations,me,onSave}){
   return(
     <div style={{...S.card,border:"1px solid #e0e7ff",background:"#f5f8ff",marginTop:8}}>
       <div style={{fontSize:12,fontWeight:600,color:"#4338ca",marginBottom:8}}>
-        🔒 Status final (Admin) · {nEval} avaliação{nEval!==1?"ões":""} · Média: <strong>{avg??—}</strong>
+        🔒 Status final (Admin) · {nEval} avaliação{nEval!==1?"ões":""} · Média: <strong>{avg??"—"}</strong>
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
         {STATUSES.filter(s=>s.id!=="pendente").map(s=>(
