@@ -181,8 +181,8 @@ function Toast({msg}){
 
 // ─── LOGIN ────────────────────────────────────────────────────────────────────
 function LoginScreen({onLogin}){
-  const [email,setEmail]=useState("thalia@seju.com");
-  const [pwd,setPwd]=useState("seju2025");
+  const [email,setEmail]=useState("");
+  const [pwd,setPwd]=useState("");
   const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   const go=async()=>{
     setLoading(true); setErr("");
@@ -215,8 +215,12 @@ function LoginScreen({onLogin}){
   );
 }
 
+// ─── HOOK DE PADDING RESPONSIVO ───────────────────────────────────────────────
+function usePad(){ const m=useIsMobile(); return m?"16px 14px 48px":"28px 32px 48px"; }
+
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({candidates,evaluations,finalStatuses}){
+  const isMobile=useIsMobile(); const pad=usePad();
   const discardedIds=new Set(finalStatuses.filter(f=>f.status==="descartado").map(f=>f.candidate_id));
   const activeC=candidates.filter(c=>!discardedIds.has(c.id));
   const total=candidates.length, discarded=discardedIds.size;
@@ -229,47 +233,41 @@ function Dashboard({candidates,evaluations,finalStatuses}){
     const entrev=new Set(evaluations.filter(e=>inC.some(x=>x.id===e.candidate_id)).map(e=>e.candidate_id)).size;
     return{k,c,total:inC.length,entrev,sel,sup};
   }),[candidates,evaluations,finalStatuses]);
-
   const stats=[
     {l:"Total inscritos",v:total,vc:T.ink,sub:`${Object.keys(COMMS).length} comissões`},
     {l:"Com avaliação",v:evaled,vc:T.green,sub:`${total>0?Math.round(evaled/total*100):0}% do total`},
-    {l:"Pendentes",v:activeC.length-evaled,vc:T.amber,sub:"aguardando entrevista"},
+    {l:"Pendentes",v:activeC.length-evaled,vc:T.amber,sub:"aguardando"},
     {l:"Selecionados",v:selected,vc:T.green,sub:"de 31 vagas"},
     {l:"Descartados",v:discarded,vc:T.ink3,sub:"sem avaliação"},
   ];
   return(
-    <div style={{padding:"28px 32px 48px",maxWidth:800}}>
-      <div style={{marginBottom:28}}>
-        <h2 style={{fontSize:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Dashboard</h2>
-        <p style={{fontSize:13,color:T.ink3,margin:0}}>Processo seletivo em andamento · atualizado em tempo real</p>
+    <div style={{padding:pad,maxWidth:800}}>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontSize:isMobile?18:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Dashboard</h2>
+        <p style={{fontSize:13,color:T.ink3,margin:0}}>Processo seletivo · tempo real</p>
       </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:28}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(5,1fr)",gap:8,marginBottom:20}}>
         {stats.map(s=>(
-          <div key={s.l} style={{...css.card,padding:"16px 18px",marginBottom:0}}>
-            <div style={{fontSize:11,fontWeight:600,color:T.ink3,textTransform:"uppercase",letterSpacing:.7,marginBottom:10}}>{s.l}</div>
-            <div style={{fontSize:26,fontWeight:600,color:s.vc,letterSpacing:"-1px",lineHeight:1}}>{s.v}</div>
-            <div style={{fontSize:11,color:T.ink3,marginTop:6}}>{s.sub}</div>
+          <div key={s.l} style={{...css.card,padding:"14px 14px",marginBottom:0}}>
+            <div style={{fontSize:10,fontWeight:600,color:T.ink3,textTransform:"uppercase",letterSpacing:.7,marginBottom:8}}>{s.l}</div>
+            <div style={{fontSize:22,fontWeight:600,color:s.vc,letterSpacing:"-1px",lineHeight:1}}>{s.v}</div>
+            <div style={{fontSize:11,color:T.ink3,marginTop:5}}>{s.sub}</div>
           </div>
         ))}
       </div>
-
-      <h3 style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:12}}>Status por comissão</h3>
+      <h3 style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:10}}>Por comissão</h3>
       {byComm.map(({k,c,total,entrev,sel,sup})=>(
         <div key={k} style={{...css.card,padding:0,marginBottom:8}}>
-          <div style={{padding:"13px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${T.border}`}}>
+          <div style={{padding:"12px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap",gap:6}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}><CommBadge ck={k}/><span style={{fontSize:12,color:T.ink3}}>{total} inscritos</span></div>
             <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <CommBadge ck={k}/>
-              <span style={{fontSize:12,color:T.ink3}}>{total} inscrito{total!==1?"s":""}</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:16}}>
-              <span style={{fontSize:11,color:T.ink3}}>🎤 {entrev} · 🟡 {sup} · ⏳ {total-entrev}</span>
+              {!isMobile&&<span style={{fontSize:11,color:T.ink3}}>🎤 {entrev} · 🟡 {sup} · ⏳ {total-entrev}</span>}
               <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{sel}<span style={{fontWeight:400,color:T.ink3}}>/{c.vagas}</span></span>
             </div>
           </div>
-          <div style={{padding:"10px 18px",display:"flex",alignItems:"center",gap:12}}>
+          <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10}}>
             <ProgressBar pct={c.vagas>0?Math.round((sel/c.vagas)*100):0} color={c.color}/>
-            <span style={{fontSize:11,fontWeight:600,color:c.color,minWidth:32,textAlign:"right"}}>{c.vagas>0?Math.round((sel/c.vagas)*100):0}%</span>
+            <span style={{fontSize:11,fontWeight:600,color:c.color,minWidth:30,textAlign:"right"}}>{c.vagas>0?Math.round((sel/c.vagas)*100):0}%</span>
           </div>
         </div>
       ))}
@@ -279,6 +277,7 @@ function Dashboard({candidates,evaluations,finalStatuses}){
 
 // ─── CANDIDATOS ───────────────────────────────────────────────────────────────
 function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,onImport,onDiscard}){
+  const isMobile=useIsMobile(); const pad=usePad();
   const [search,setSearch]=useState("");
   const byComm=useMemo(()=>Object.entries(COMMS).map(([k,c])=>{
     const q=norm(search);
@@ -286,46 +285,42 @@ function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,on
     return{k,c,list};
   }),[candidates,search]);
   return(
-    <div style={{padding:"28px 32px 48px",maxWidth:800}}>
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
+    <div style={{padding:pad,maxWidth:800}}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,gap:10}}>
         <div>
-          <h2 style={{fontSize:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Candidatos</h2>
-          <p style={{fontSize:13,color:T.ink3,margin:0}}>{candidates.length} inscritos · {Object.keys(COMMS).length} comissões</p>
+          <h2 style={{fontSize:isMobile?18:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Candidatos</h2>
+          <p style={{fontSize:13,color:T.ink3,margin:0}}>{candidates.length} inscritos</p>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:6,flexShrink:0}}>
           {me.is_admin&&(
-            <label style={{...css.btn,...css.btnSecondary,...css.btnSm,cursor:"pointer"}}>
-              ↓ Importar CSV
+            <label style={{...css.btn,...css.btnSecondary,...css.btnSm,cursor:"pointer",whiteSpace:"nowrap"}}>
+              {isMobile?"↓ CSV":"↓ Importar CSV"}
               <input type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>{
                 const f=e.target.files[0]; if(!f) return;
                 const r=new FileReader(); r.onload=ev=>onImport(ev.target.result); r.readAsText(f,"UTF-8"); e.target.value="";
               }}/>
             </label>
           )}
-          {me.is_admin&&<button onClick={onAdd} style={{...css.btn,...css.btnPrimary,...css.btnSm}}>+ Novo candidato</button>}
+          {me.is_admin&&<button onClick={onAdd} style={{...css.btn,...css.btnPrimary,...css.btnSm,whiteSpace:"nowrap"}}>{isMobile?"+ Novo":"+ Novo candidato"}</button>}
         </div>
       </div>
-
-      <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:8,padding:"0 14px",height:38,marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:8,padding:"0 14px",height:38,marginBottom:20}}>
         <span style={{color:T.ink3,fontSize:14}}>⌕</span>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, matrícula ou período..."
-          style={{border:"none",outline:"none",fontSize:13,color:T.ink,background:"transparent",flex:1}}/>
+          style={{border:"none",outline:"none",fontSize:13,color:T.ink,background:"transparent",flex:1,minWidth:0}}/>
       </div>
-
       {candidates.length===0&&(
-        <div style={{textAlign:"center",padding:"64px 0",color:T.ink3}}>
-          <div style={{fontSize:40,marginBottom:12,opacity:.4}}>📭</div>
+        <div style={{textAlign:"center",padding:"48px 0",color:T.ink3}}>
+          <div style={{fontSize:36,marginBottom:10,opacity:.4}}>📭</div>
           <p style={{fontSize:14,margin:0}}>Nenhum candidato cadastrado ainda.</p>
-          <p style={{fontSize:12,margin:"4px 0 0"}}>Importe um CSV ou adicione manualmente.</p>
         </div>
       )}
-
       {byComm.map(({k,c,list})=>{
         if(!list.length) return null;
         return(
-          <div key={k} style={{marginBottom:28}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,paddingBottom:12,borderBottom:`1px solid ${T.border}`,marginBottom:10}}>
-              <div style={{width:3,height:16,borderRadius:99,background:c.color}}/>
+          <div key={k} style={{marginBottom:24}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,paddingBottom:10,borderBottom:`1px solid ${T.border}`,marginBottom:8}}>
+              <div style={{width:3,height:14,borderRadius:99,background:c.color}}/>
               <span style={{fontSize:13,fontWeight:600,color:T.ink}}>{c.name}</span>
               <span style={{fontSize:11,color:T.ink3}}>{list.length} candidato{list.length!==1?"s":""}</span>
               <span style={{marginLeft:"auto",fontSize:11,color:T.ink3}}>{c.vagas} vagas</span>
@@ -337,27 +332,23 @@ function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,on
               const avg=avgScore(evaluations,cd.id,cd.commission1);
               const st=fs?.status||"pendente";
               return(
-                <div key={cd.id} style={{...css.card,display:"flex",alignItems:"center",gap:14,opacity:st==="descartado"?0.45:1,padding:"13px 16px"}}>
-                  <Avatar name={cd.name} bg={c.light} color={c.text}/>
+                <div key={cd.id} style={{...css.card,display:"flex",alignItems:"center",gap:12,opacity:st==="descartado"?0.45:1,padding:"12px 14px"}}>
+                  {!isMobile&&<Avatar name={cd.name} bg={c.light} color={c.text}/>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{cd.name}</div>
-                    <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{cd.period||"—"}{cd.matricula?` · Mat. ${cd.matricula}`:""}</div>
-                    {allEvals.length>0&&(
-                      <div style={{fontSize:11,color:T.ink3,marginTop:3}}>
-                        {allEvals.length} avaliação{allEvals.length!==1?"ões":""} · média <strong style={{color:T.accent}}>{avg}</strong>
-                      </div>
-                    )}
+                    <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{cd.period||"—"}{cd.matricula?` · ${cd.matricula}`:""}</div>
+                    {allEvals.length>0&&<div style={{fontSize:11,color:T.ink3,marginTop:2}}>{allEvals.length} aval. · média <strong style={{color:T.accent}}>{avg}</strong></div>}
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",justifyContent:"flex-end"}}>
                     <SBadge status={st}/>
                     {st!=="descartado"&&(
                       <>
-                        {me.is_admin&&st==="pendente"&&(
+                        {me.is_admin&&st==="pendente"&&!isMobile&&(
                           <button onClick={()=>onDiscard(cd.id)} style={{...css.btn,...css.btnSm,...css.btnDanger}}>Descartar</button>
                         )}
                         <button onClick={()=>onEval(cd)} style={{...css.btn,...css.btnSm,
-                          ...(myEval?.scores?{background:T.greenLight,color:T.green,border:`1px solid ${T.greenBorder}`}:css.btnPrimary)}}>
-                          {myEval?.scores?"Ver avaliação":"Iniciar entrevista"}
+                          ...(myEval?.scores?{background:T.greenLight,color:T.green,border:`1px solid ${T.greenBorder}`}:css.btnPrimary),whiteSpace:"nowrap"}}>
+                          {myEval?.scores?(isMobile?"Ver":"Ver avaliação"):(isMobile?"Avaliar":"Iniciar entrevista")}
                         </button>
                       </>
                     )}
@@ -559,6 +550,7 @@ function FinalStatusPanel({candidate,finalStatus,evaluations,me,onSave}){
 
 // ─── RANKINGS ─────────────────────────────────────────────────────────────────
 function Rankings({candidates,evaluations,finalStatuses,me,onSetFinal,initComm}){
+  const isMobile=useIsMobile(); const pad=usePad();
   const [active,setActive]=useState(initComm||"tecnica");
   const discardedIds=new Set(finalStatuses.filter(f=>f.status==="descartado").map(f=>f.candidate_id));
   const ranking=useMemo(()=>candidates
@@ -569,31 +561,29 @@ function Rankings({candidates,evaluations,finalStatuses,me,onSetFinal,initComm})
   const vagas=COMMS[active].vagas;
 
   return(
-    <div style={{padding:"28px 32px 48px",maxWidth:800}}>
-      <div style={{marginBottom:24}}>
-        <h2 style={{fontSize:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Rankings</h2>
+    <div style={{padding:pad,maxWidth:800}}>
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontSize:isMobile?18:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Rankings</h2>
         <p style={{fontSize:13,color:T.ink3,margin:0}}>Média simples entre todos os avaliadores</p>
       </div>
-
-      <div style={{display:"flex",gap:3,marginBottom:20,background:T.surface3,padding:3,borderRadius:10,border:`1px solid ${T.border}`,width:"fit-content"}}>
+      {/* tabs — scroll horizontal no mobile */}
+      <div style={{display:"flex",gap:3,marginBottom:16,background:T.surface3,padding:3,borderRadius:10,border:`1px solid ${T.border}`,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         {Object.entries(COMMS).map(([k,c])=>{
           const sel=finalStatuses.filter(f=>{const cd=candidates.find(x=>x.id===f.candidate_id);return cd?.commission1===k&&f.status==="selecionado";}).length;
           return(
             <button key={k} onClick={()=>setActive(k)}
-              style={{...css.btn,...css.btnSm,border:"none",
-                background:active===k?T.surface:"transparent",
-                color:active===k?T.ink:T.ink3,
-                boxShadow:active===k?"0 1px 3px rgba(0,0,0,.06)":"none"}}>
-              {c.name} <span style={{color:T.ink3,fontSize:11}}>{sel}/{c.vagas}</span>
+              style={{...css.btn,...css.btnSm,border:"none",flexShrink:0,
+                background:active===k?T.surface:"transparent",color:active===k?T.ink:T.ink3,
+                boxShadow:active===k?"0 1px 3px rgba(0,0,0,.06)":"none",whiteSpace:"nowrap"}}>
+              {isMobile?c.name.split(" ")[0]:c.name} <span style={{color:T.ink3,fontSize:11}}>{sel}/{c.vagas}</span>
             </button>
           );
         })}
       </div>
-
       {ranking.length===0?(
-        <div style={{textAlign:"center",padding:"64px 0",color:T.ink3}}>
-          <div style={{fontSize:40,marginBottom:12,opacity:.4}}>📊</div>
-          <p style={{fontSize:14,margin:0}}>Nenhum candidato avaliado para esta comissão</p>
+        <div style={{textAlign:"center",padding:"48px 0",color:T.ink3}}>
+          <div style={{fontSize:36,opacity:.4,marginBottom:10}}>📊</div>
+          <p style={{fontSize:14,margin:0}}>Nenhum candidato avaliado</p>
         </div>
       ):(
         <div>
@@ -601,30 +591,30 @@ function Rankings({candidates,evaluations,finalStatuses,me,onSetFinal,initComm})
             const isSel=i<vagas; const isSup=i>=vagas&&i<vagas+Math.ceil(vagas*0.5);
             const posColor=i===0?"#B45309":i===1?T.ink3:i===2?"#92400E":T.border2;
             return(
-              <div key={c.id} style={{...css.card,padding:"14px 16px",
+              <div key={c.id} style={{...css.card,padding:"13px 14px",
                 background:isSel?T.greenLight:"#fff",
                 borderColor:isSel?T.greenBorder:isSup?T.amberBorder:T.border}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{fontSize:14,fontWeight:600,color:posColor,width:28,textAlign:"center",flexShrink:0}}>{i+1}°</div>
-                  <Avatar name={c.name} size={32} bg={COMMS[active].light} color={COMMS[active].text}/>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{fontSize:13,fontWeight:600,color:posColor,width:24,textAlign:"center",flexShrink:0}}>{i+1}°</div>
+                  {!isMobile&&<Avatar name={c.name} size={30} bg={COMMS[active].light} color={COMMS[active].text}/>}
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{c.name}</div>
-                    <div style={{fontSize:11,color:T.ink3}}>{c.period||"—"}{c.matricula?` · ${c.matricula}`:""}</div>
-                    {c.evs.length>0&&(
-                      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:5}}>
+                    <div style={{fontSize:11,color:T.ink3}}>{c.period||"—"}{!isMobile&&c.matricula?` · ${c.matricula}`:""}</div>
+                    {!isMobile&&c.evs.length>0&&(
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4,marginTop:4}}>
                         {c.evs.map(e=>(
-                          <span key={e.id} style={{fontSize:10,background:T.surface3,border:`1px solid ${T.border}`,color:T.ink2,padding:"2px 8px",borderRadius:99}}>
+                          <span key={e.id} style={{fontSize:10,background:T.surface3,border:`1px solid ${T.border}`,color:T.ink2,padding:"2px 7px",borderRadius:99}}>
                             {e.evaluator_name}: <strong>{wScore(e.scores,active).toFixed(2)}</strong>
                           </span>
                         ))}
                       </div>
                     )}
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-                    {isSel&&<span style={{fontSize:10,background:T.greenLight,color:T.green,padding:"3px 8px",borderRadius:99,fontWeight:600,border:`1px solid ${T.greenBorder}`}}>✓ Vaga</span>}
-                    {isSup&&<span style={{fontSize:10,background:T.amberLight,color:T.amber,padding:"3px 8px",borderRadius:99,fontWeight:600,border:`1px solid ${T.amberBorder}`}}>Suplente</span>}
-                    <SBadge status={c.fs?.status||"pendente"}/>
-                    <span style={{fontSize:20,fontWeight:600,color:T.accent,letterSpacing:"-1px",minWidth:44,textAlign:"right"}}>{c.avg.toFixed(2)}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                    {isSel&&<span style={{fontSize:10,background:T.greenLight,color:T.green,padding:"2px 7px",borderRadius:99,fontWeight:600,border:`1px solid ${T.greenBorder}`}}>✓</span>}
+                    {isSup&&<span style={{fontSize:10,background:T.amberLight,color:T.amber,padding:"2px 7px",borderRadius:99,fontWeight:600,border:`1px solid ${T.amberBorder}`}}>Sup.</span>}
+                    {!isMobile&&<SBadge status={c.fs?.status||"pendente"}/>}
+                    <span style={{fontSize:18,fontWeight:600,color:T.accent,letterSpacing:"-1px",minWidth:40,textAlign:"right"}}>{c.avg.toFixed(2)}</span>
                   </div>
                 </div>
                 {me.is_admin&&(
@@ -633,7 +623,7 @@ function Rankings({candidates,evaluations,finalStatuses,me,onSetFinal,initComm})
               </div>
             );
           })}
-          <p style={{fontSize:11,color:T.ink3,textAlign:"center",marginTop:12}}>{COMMS[active].name} · {vagas} vagas disponíveis</p>
+          <p style={{fontSize:11,color:T.ink3,textAlign:"center",marginTop:10}}>{COMMS[active].name} · {vagas} vagas</p>
         </div>
       )}
     </div>
@@ -775,6 +765,9 @@ function Export({candidates,evaluations,finalStatuses}){
   );
 }
 
+// ─── HOOK RESPONSIVO ──────────────────────────────────────────────────────────
+function useIsMobile(){ const [m,setM]=useState(window.innerWidth<768); useEffect(()=>{ const h=()=>setM(window.innerWidth<768); window.addEventListener("resize",h); return()=>window.removeEventListener("resize",h); },[]); return m; }
+
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const NAV=[
   {id:"dashboard",icon:"▣",label:"Dashboard",section:"Visão geral"},
@@ -785,6 +778,45 @@ const NAV=[
 ];
 
 function Layout({me,page,onNav,onLogout,children}){
+  const isMobile=useIsMobile();
+  const [menuOpen,setMenuOpen]=useState(false);
+  const navTo=id=>{ onNav(id); setMenuOpen(false); };
+
+  // ── BOTTOM BAR (mobile) ───────────────────────────────────────────────────
+  if(isMobile) return(
+    <div style={{display:"flex",flexDirection:"column",minHeight:"100vh",background:T.surface2}}>
+      {/* top bar */}
+      <header style={{background:T.surface,borderBottom:`1px solid ${T.border}`,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:28,height:28,borderRadius:8,background:T.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13}}>⚖️</div>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:T.ink,letterSpacing:"-.3px"}}>SEJU Select</div>
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <Avatar name={me.name} size={28} bg={T.accentLight} color={T.accent}/>
+          <button onClick={onLogout} style={{...css.btn,background:"none",border:"none",fontSize:12,color:T.ink3,padding:"4px 8px"}}>↩</button>
+        </div>
+      </header>
+
+      {/* conteúdo */}
+      <main style={{flex:1,overflowY:"auto",paddingBottom:72}}>{children}</main>
+
+      {/* bottom nav */}
+      <nav style={{position:"fixed",bottom:0,left:0,right:0,background:T.surface,borderTop:`1px solid ${T.border}`,display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)"}}>
+        {NAV.map(n=>(
+          <div key={n.id} onClick={()=>navTo(n.id)}
+            style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 4px 8px",cursor:"pointer",
+              color:page===n.id?T.accent:T.ink3}}>
+            <span style={{fontSize:18,lineHeight:1}}>{n.icon}</span>
+            <span style={{fontSize:9,fontWeight:600,marginTop:3,letterSpacing:.3}}>{n.label}</span>
+          </div>
+        ))}
+      </nav>
+    </div>
+  );
+
+  // ── SIDEBAR (desktop) ─────────────────────────────────────────────────────
   return(
     <div style={{display:"flex",minHeight:"100vh",background:T.surface2}}>
       <aside style={{width:224,flexShrink:0,background:T.surface,borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",position:"sticky",top:0,height:"100vh"}}>
@@ -803,8 +835,7 @@ function Layout({me,page,onNav,onLogout,children}){
               {n.section&&<div style={{fontSize:10,fontWeight:600,color:T.ink3,letterSpacing:.8,textTransform:"uppercase",padding:"14px 8px 5px"}}>{n.section}</div>}
               <div onClick={()=>onNav(n.id)}
                 style={{display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:8,cursor:"pointer",fontSize:13,fontWeight:500,marginBottom:1,
-                  background:page===n.id?T.accentLight:"transparent",
-                  color:page===n.id?T.accent:T.ink2}}>
+                  background:page===n.id?T.accentLight:"transparent",color:page===n.id?T.accent:T.ink2}}>
                 <span style={{fontSize:13,opacity:page===n.id?1:.6}}>{n.icon}</span>
                 {n.label}
               </div>
@@ -812,7 +843,7 @@ function Layout({me,page,onNav,onLogout,children}){
           ))}
         </nav>
         <div style={{padding:"12px 10px",borderTop:`1px solid ${T.border}`}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,cursor:"pointer",marginBottom:2}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,marginBottom:2}}>
             <Avatar name={me.name} size={28} bg={T.accentLight} color={T.accent}/>
             <div style={{minWidth:0}}>
               <div style={{fontSize:12,fontWeight:500,color:T.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{me.name}</div>
