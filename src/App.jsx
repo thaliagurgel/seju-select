@@ -215,11 +215,14 @@ function LoginScreen({onLogin}){
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 function Dashboard({candidates,evaluations,finalStatuses}){
+  const discardedIds=new Set(finalStatuses.filter(f=>f.status==="descartado").map(f=>f.candidate_id));
+  const activeC=candidates.filter(c=>!discardedIds.has(c.id));
   const total=candidates.length;
-  const evaled=new Set(evaluations.map(e=>e.candidate_id)).size;
+  const discarded=discardedIds.size;
+  const evaled=new Set(evaluations.filter(e=>!discardedIds.has(e.candidate_id)).map(e=>e.candidate_id)).size;
   const selected=finalStatuses.filter(f=>f.status==="selecionado").length;
   const byComm=useMemo(()=>Object.entries(COMMS).map(([k,c])=>{
-    const inC=candidates.filter(x=>x.commission1===k);
+    const inC=candidates.filter(x=>x.commission1===k&&!discardedIds.has(x.id));
     const sel=finalStatuses.filter(f=>{const cd=candidates.find(x=>x.id===f.candidate_id);return cd?.commission1===k&&f.status==="selecionado";}).length;
     const sup=finalStatuses.filter(f=>{const cd=candidates.find(x=>x.id===f.candidate_id);return cd?.commission1===k&&f.status==="suplente";}).length;
     const entrev=new Set(evaluations.filter(e=>inC.some(x=>x.id===e.candidate_id)).map(e=>e.candidate_id)).size;
@@ -229,8 +232,8 @@ function Dashboard({candidates,evaluations,finalStatuses}){
     <div style={S.page}>
       <h2 style={{fontSize:22,fontWeight:700,color:"#1f2937",margin:"0 0 4px"}}>Dashboard</h2>
       <p style={{fontSize:13,color:"#9ca3af",marginBottom:20}}>V SEJU 2026.1 · Dados em tempo real</p>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-        {[{icon:"👥",v:total,l:"Inscritos",bg:"#eff6ff",tc:"#1d4ed8"},{icon:"🎤",v:evaled,l:"Com avaliação",bg:"#f0fdf4",tc:"#15803d"},{icon:"⏳",v:total-evaled,l:"Pendentes",bg:"#fff7ed",tc:"#c2410c"},{icon:"✅",v:selected,l:"Selecionados",bg:"#f0fdf4",tc:"#15803d"}].map(s=>(
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:24}}>
+        {[{icon:"👥",v:total,l:"Inscritos",bg:"#eff6ff",tc:"#1d4ed8"},{icon:"🎤",v:evaled,l:"Com avaliação",bg:"#f0fdf4",tc:"#15803d"},{icon:"⏳",v:activeC.length-evaled,l:"Pendentes",bg:"#fff7ed",tc:"#c2410c"},{icon:"✅",v:selected,l:"Selecionados",bg:"#f0fdf4",tc:"#15803d"},{icon:"🚫",v:discarded,l:"Descartados",bg:"#f9fafb",tc:"#6b7280"}].map(s=>(
           <div key={s.l} style={{background:s.bg,borderRadius:14,padding:16}}>
             <div style={{fontSize:20,marginBottom:4}}>{s.icon}</div>
             <div style={{fontSize:28,fontWeight:900,color:s.tc}}>{s.v}</div>
@@ -466,7 +469,7 @@ function FinalStatusPanel({candidate,finalStatus,evaluations,me,onSave}){
   return(
     <div style={{...S.card,border:"1px solid #e0e7ff",background:"#f5f8ff",marginTop:8}}>
       <div style={{fontSize:12,fontWeight:600,color:"#4338ca",marginBottom:8}}>
-        🔒 Status final (Admin) · {nEval} avaliação{nEval!==1?"ões":""} · Média: <strong>{avg??"—"}</strong>
+                  🔒 Status final (Admin) · {nEval} avaliação{nEval!==1?"ões":""} · Média: <strong>{avg??"—"}</strong>
       </div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}}>
         {STATUSES.filter(s=>s.id!=="pendente").map(s=>(
@@ -730,7 +733,10 @@ function Layout({me,page,onNav,onLogout,children}){
 
 // ─── APP PRINCIPAL ────────────────────────────────────────────────────────────
 export default function App(){
-  const [me,setMe]=useState(null);
+  const [me,setMe]=useState(()=>{
+    try{ const s=localStorage.getItem("seju_user"); return s?JSON.parse(s):null; }
+    catch{ return null; }
+  });
   const [page,setPage]=useState("dashboard");
   const [users,setUsers]=useState([]);
   const [candidates,setCandidates]=useState([]);
@@ -815,7 +821,7 @@ export default function App(){
     await loadAll();
   };
 
-  if(!me) return <LoginScreen onLogin={u=>{setMe(u);}} />;
+  if(!me) return <LoginScreen onLogin={u=>{setMe(u);localStorage.setItem("seju_user",JSON.stringify(u));}} />;
   if(loading) return <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f9fafb",color:"#9ca3af"}}>Carregando dados...</div>;
 
   const renderPage=()=>{
@@ -863,7 +869,7 @@ export default function App(){
   };
 
   return(
-    <Layout me={me} page={page} onNav={p=>{setPage(p);if(p!=="rankings")setRankComm(null);}} onLogout={()=>{setMe(null);setPage("dashboard");}}>
+    <Layout me={me} page={page} onNav={p=>{setPage(p);if(p!=="rankings")setRankComm(null);}} onLogout={()=>{setMe(null);localStorage.removeItem("seju_user");setPage("dashboard");}}>
       {renderPage()}
       <Toast msg={toast}/>
     </Layout>
