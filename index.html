@@ -1,15 +1,54 @@
-<!-- ── index.html (raiz do projeto) ─────────────────────────────────────── -->
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <!-- Responsividade universal: iOS Safari, Android Chrome, Windows -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <!-- PWA / homescreen iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SEJU Select" />
+    <!-- Android Chrome -->
+    <meta name="theme-color" content="#3730A3" />
+    <!-- Windows / Edge -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>SEJU Select</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>" />
+    <link rel="icon" type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚖️</text></svg>" />
+    <style>
+      /* Reset universal */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        background: #F7F7F5;
+        overscroll-behavior: none;
+      }
+      /* Remove estilos padrão de input/button que variam por browser */
+      input, button, select, textarea {
+        font-family: inherit;
+        font-size: inherit;
+        -webkit-tap-highlight-color: transparent;
+      }
+      /* Scrollbar discreta (Chrome/Edge) */
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #D0D0CC; border-radius: 99px; }
+      /* Evita zoom em inputs no iOS */
+      @media screen and (max-width: 768px) {
+        input, select, textarea { font-size: 16px !important; }
+      }
+      /* Safe area para iPhones com notch */
+      #root {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+    </style>
   </head>
-  <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
