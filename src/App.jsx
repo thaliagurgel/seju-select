@@ -136,14 +136,14 @@ function dlCSV(candidates,evaluations,finalStatuses){
 
 // ─── STYLE HELPERS ────────────────────────────────────────────────────────────
 const css = {
-  card: { background:T.surface, border:`1px solid ${T.border}`, borderRadius:14, padding:"18px 20px", marginBottom:10 },
+  card:  { background:T.surface, border:`1px solid ${T.border}`, borderRadius:14, padding:"18px 20px", marginBottom:10 },
   label: { fontSize:11, fontWeight:600, color:T.ink3, textTransform:"uppercase", letterSpacing:.7, display:"block", marginBottom:5 },
-  input: { width:"100%", border:`1px solid ${T.border}`, borderRadius:8, padding:"9px 12px", fontSize:13, background:T.surface, color:T.ink, boxSizing:"border-box", outline:"none" },
-  btn: { border:"none", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:500, cursor:"pointer", display:"inline-flex", alignItems:"center", gap:6 },
-  btnPrimary: { background:T.accent, color:"#fff" },
+  input: { width:"100%", border:`1px solid ${T.border}`, borderRadius:8, padding:"9px 12px", fontSize:13, background:T.surface, color:T.ink, boxSizing:"border-box", outline:"none", WebkitAppearance:"none", appearance:"none" },
+  btn:   { border:"none", borderRadius:8, padding:"8px 16px", fontSize:13, fontWeight:500, cursor:"pointer", display:"inline-flex", alignItems:"center", WebkitAppearance:"none", appearance:"none", lineHeight:"1.4", textDecoration:"none" },
+  btnPrimary:   { background:T.accent, color:"#fff" },
   btnSecondary: { background:T.surface, color:T.ink, border:`1px solid ${T.border2}` },
-  btnSm: { padding:"6px 12px", fontSize:12 },
-  btnDanger: { background:T.surface, color:T.red, border:`1px solid ${T.redBorder}` },
+  btnSm:   { padding:"6px 12px", fontSize:12 },
+  btnDanger:    { background:T.surface, color:T.red, border:`1px solid ${T.redBorder}` },
 };
 
 function CommBadge({ck}){
@@ -219,26 +219,29 @@ function LoginScreen({onLogin}){
 function usePad(){ const m=useIsMobile(); return m?"16px 14px 48px":"28px 32px 48px"; }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
-function Dashboard({candidates,evaluations,finalStatuses}){
+function Dashboard({candidates,evaluations,finalStatuses,onFilter}){
   const isMobile=useIsMobile(); const pad=usePad();
   const discardedIds=new Set(finalStatuses.filter(f=>f.status==="descartado").map(f=>f.candidate_id));
   const activeC=candidates.filter(c=>!discardedIds.has(c.id));
   const total=candidates.length, discarded=discardedIds.size;
-  const evaled=new Set(evaluations.filter(e=>!discardedIds.has(e.candidate_id)).map(e=>e.candidate_id)).size;
+  // avaliado = candidato que tem ao menos 1 evaluation com scores, e nao está descartado
+  const evaledIds=new Set(evaluations.filter(e=>e.scores&&!discardedIds.has(e.candidate_id)).map(e=>e.candidate_id));
+  const evaled=evaledIds.size;
   const selected=finalStatuses.filter(f=>f.status==="selecionado").length;
   const byComm=useMemo(()=>Object.entries(COMMS).map(([k,c])=>{
     const inC=candidates.filter(x=>x.commission1===k&&!discardedIds.has(x.id));
     const sel=finalStatuses.filter(f=>{const cd=candidates.find(x=>x.id===f.candidate_id);return cd?.commission1===k&&f.status==="selecionado";}).length;
     const sup=finalStatuses.filter(f=>{const cd=candidates.find(x=>x.id===f.candidate_id);return cd?.commission1===k&&f.status==="suplente";}).length;
-    const entrev=new Set(evaluations.filter(e=>inC.some(x=>x.id===e.candidate_id)).map(e=>e.candidate_id)).size;
+    const entrev=new Set(evaluations.filter(e=>inC.some(x=>x.id===e.candidate_id)&&e.scores).map(e=>e.candidate_id)).size;
     return{k,c,total:inC.length,entrev,sel,sup};
   }),[candidates,evaluations,finalStatuses]);
+
   const stats=[
-    {l:"Total inscritos",v:total,vc:T.ink,sub:`${Object.keys(COMMS).length} comissões`},
-    {l:"Com avaliação",v:evaled,vc:T.green,sub:`${total>0?Math.round(evaled/total*100):0}% do total`},
-    {l:"Pendentes",v:activeC.length-evaled,vc:T.amber,sub:"aguardando"},
-    {l:"Selecionados",v:selected,vc:T.green,sub:"de 31 vagas"},
-    {l:"Descartados",v:discarded,vc:T.ink3,sub:"sem avaliação"},
+    {l:"Total inscritos", v:total,   vc:T.ink,   sub:`${Object.keys(COMMS).length} comissões`, filter:"todos"},
+    {l:"Com avaliação",   v:evaled,  vc:T.green,  sub:`${total>0?Math.round(evaled/total*100):0}% do total`, filter:"avaliado"},
+    {l:"Pendentes",       v:activeC.length-evaled, vc:T.amber, sub:"aguardando", filter:"pendente"},
+    {l:"Selecionados",    v:selected,vc:T.green,  sub:"de 31 vagas", filter:"selecionado"},
+    {l:"Descartados",     v:discarded,vc:T.ink3,  sub:"sem avaliação", filter:"descartado"},
   ];
   return(
     <div style={{padding:pad,maxWidth:800}}>
@@ -248,10 +251,14 @@ function Dashboard({candidates,evaluations,finalStatuses}){
       </div>
       <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(5,1fr)",gap:8,marginBottom:20}}>
         {stats.map(s=>(
-          <div key={s.l} style={{...css.card,padding:"14px 14px",marginBottom:0}}>
+          <div key={s.l} onClick={()=>onFilter(s.filter)}
+            style={{...css.card,padding:"14px 14px",marginBottom:0,cursor:"pointer",transition:"border-color .15s, box-shadow .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor=T.accent;e.currentTarget.style.boxShadow="0 0 0 3px "+T.accentLight;}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor=T.border;e.currentTarget.style.boxShadow="none";}}>
             <div style={{fontSize:10,fontWeight:600,color:T.ink3,textTransform:"uppercase",letterSpacing:.7,marginBottom:8}}>{s.l}</div>
             <div style={{fontSize:22,fontWeight:600,color:s.vc,letterSpacing:"-1px",lineHeight:1}}>{s.v}</div>
             <div style={{fontSize:11,color:T.ink3,marginTop:5}}>{s.sub}</div>
+            <div style={{fontSize:10,color:T.accent,marginTop:6,fontWeight:500}}>Ver lista →</div>
           </div>
         ))}
       </div>
@@ -278,21 +285,26 @@ function Dashboard({candidates,evaluations,finalStatuses}){
 // ─── CANDIDATOS ───────────────────────────────────────────────────────────────
 function RemanejModal({candidate,onConfirm,onClose}){
   const [target,setTarget]=useState("");
-  const opts=Object.entries(COMMS).filter(([k])=>k!==candidate.commission1);
+  const currentComm=candidate.commission1||candidate.commission_1||"tecnica";
+  const opts=Object.entries(COMMS).filter(([k])=>k!==currentComm);
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-      <div style={{background:T.surface,borderRadius:16,padding:24,width:"100%",maxWidth:380,boxShadow:"0 20px 40px rgba(0,0,0,.15)"}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.4)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:T.surface,borderRadius:16,padding:24,width:"100%",maxWidth:380,boxShadow:"0 20px 40px rgba(0,0,0,.18)"}}>
         <h3 style={{fontSize:16,fontWeight:600,color:T.ink,margin:"0 0 4px",letterSpacing:"-.3px"}}>Remanejar candidato</h3>
-        <p style={{fontSize:13,color:T.ink3,margin:"0 0 18px"}}><strong style={{color:T.ink}}>{candidate.name}</strong> — atualmente em <strong>{COMMS[candidate.commission1]?.name}</strong></p>
-        <label style={css.label}>Nova comissão</label>
+        <p style={{fontSize:13,color:T.ink3,margin:"0 0 18px"}}>
+          <strong style={{color:T.ink}}>{candidate.name}</strong> está em <strong style={{color:T.ink}}>{COMMS[currentComm]?.name||currentComm}</strong>
+        </p>
+        <label style={css.label}>Mover para a comissão</label>
         <select value={target} onChange={e=>setTarget(e.target.value)} style={{...css.input,marginBottom:20}}>
-          <option value="">Selecione...</option>
+          <option value="">Selecione a nova comissão...</option>
           {opts.map(([k,c])=><option key={k} value={k}>{c.name}</option>)}
         </select>
         <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
           <button onClick={onClose} style={{...css.btn,...css.btnSecondary}}>Cancelar</button>
           <button onClick={()=>target&&onConfirm(target)} disabled={!target}
-            style={{...css.btn,...css.btnPrimary,opacity:target?1:.5}}>Confirmar remanejamento</button>
+            style={{...css.btn,...css.btnPrimary,opacity:target?1:.5}}>
+            Confirmar remanejamento
+          </button>
         </div>
       </div>
     </div>
@@ -328,6 +340,12 @@ function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,on
           {me.is_admin&&<button onClick={onAdd} style={{...css.btn,...css.btnPrimary,...css.btnSm,whiteSpace:"nowrap"}}>{isMobile?"+ Novo":"+ Novo candidato"}</button>}
         </div>
       </div>
+      {filterLabel&&(
+        <div style={{background:T.accentLight,border:`1px solid ${T.accent}33`,borderRadius:8,padding:"8px 14px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontSize:12,color:T.accent,fontWeight:500}}>Filtrando: <strong>{filterLabel}</strong> · {filteredCandidates.length} candidato{filteredCandidates.length!==1?"s":""}</span>
+          <button onClick={onClearFilter} style={{...css.btn,background:"none",border:"none",color:T.accent,fontSize:12,padding:"2px 6px",fontWeight:600}}>✕ Limpar</button>
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",gap:8,background:T.surface,border:`1px solid ${T.border}`,borderRadius:8,padding:"0 14px",height:38,marginBottom:20}}>
         <span style={{color:T.ink3,fontSize:14}}>⌕</span>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por nome, matrícula ou período..."
@@ -679,6 +697,7 @@ function Rankings({candidates,evaluations,finalStatuses,me,onSetFinal,initComm})
 
 // ─── AVALIADORES ──────────────────────────────────────────────────────────────
 function Users({users,me,onAdd,onDel}){
+  const isMobile=useIsMobile(); const pad=usePad();
   const [form,setForm]=useState({name:"",email:"",password:"seju2025",leads_commission:"",is_admin:false});
   const [adding,setAdding]=useState(false); const [saving,setSaving]=useState(false);
   const upd=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -687,26 +706,30 @@ function Users({users,me,onAdd,onDel}){
     setSaving(true); await onAdd(form); setSaving(false);
     setForm({name:"",email:"",password:"seju2025",leads_commission:"",is_admin:false}); setAdding(false);
   };
+  if(!users||users.length===0&&!me.is_admin) return(
+    <div style={{padding:pad}}><p style={{color:T.ink3,fontSize:13}}>Nenhum avaliador cadastrado.</p></div>
+  );
   return(
-    <div style={{padding:"28px 32px 48px",maxWidth:640}}>
-      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:24}}>
+    <div style={{padding:pad,maxWidth:640}}>
+      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:20,gap:10}}>
         <div>
-          <h2 style={{fontSize:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Avaliadores</h2>
+          <h2 style={{fontSize:isMobile?18:22,fontWeight:600,color:T.ink,letterSpacing:"-.4px",margin:"0 0 3px"}}>Avaliadores</h2>
           <p style={{fontSize:13,color:T.ink3,margin:0}}>{users.length} membros da Comissão Geral</p>
         </div>
-        {me.is_admin&&<button onClick={()=>setAdding(p=>!p)} style={{...css.btn,...css.btnPrimary,...css.btnSm}}>+ Novo membro</button>}
+        {me.is_admin&&<button onClick={()=>setAdding(p=>!p)} style={{...css.btn,...css.btnPrimary,...css.btnSm,flexShrink:0}}>+ Novo membro</button>}
       </div>
-      {adding&&(
-        <div style={{...css.card,padding:20,marginBottom:16}}>
-          <h3 style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:16}}>Cadastrar avaliador</h3>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            {[{k:"name",l:"Nome",ph:"Nome completo",span:2},{k:"email",l:"Email",ph:"email@seju.com"},{k:"password",l:"Senha inicial",ph:"seju2025"}].map(x=>(
-              <div key={x.k} style={x.span?{gridColumn:`span ${x.span}`}:{}}>
+      {adding&&me.is_admin&&(
+        <div style={{...css.card,padding:20,marginBottom:14}}>
+          <h3 style={{fontSize:13,fontWeight:600,color:T.ink,marginBottom:14}}>Cadastrar avaliador</h3>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:12}}>
+            {[{k:"name",l:"Nome",ph:"Nome completo",span:true},{k:"email",l:"Email",ph:"email@seju.com"},{k:"password",l:"Senha inicial",ph:"seju2025"}].map(x=>(
+              <div key={x.k} style={x.span?{gridColumn:"1 / -1"}:{}}>
                 <label style={css.label}>{x.l}</label>
-                <input value={form[x.k]||""} onChange={e=>upd(x.k,e.target.value)} placeholder={x.ph} type={x.k==="password"?"password":"text"} style={css.input}/>
+                <input value={form[x.k]||""} onChange={e=>upd(x.k,e.target.value)} placeholder={x.ph}
+                  type={x.k==="password"?"password":"text"} style={css.input}/>
               </div>
             ))}
-            <div>
+            <div style={{gridColumn:"1 / -1"}}>
               <label style={css.label}>Lidera comissão</label>
               <select value={form.leads_commission||""} onChange={e=>upd("leads_commission",e.target.value)} style={css.input}>
                 <option value="">Apenas avaliador</option>
@@ -714,23 +737,24 @@ function Users({users,me,onAdd,onDel}){
               </select>
             </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:8,margin:"14px 0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,margin:"12px 0"}}>
             <input type="checkbox" id="adm" checked={form.is_admin} onChange={e=>upd("is_admin",e.target.checked)}/>
-            <label htmlFor="adm" style={{fontSize:13,color:T.ink2}}>Admin — pode gerenciar membros e definir status final</label>
+            <label htmlFor="adm" style={{fontSize:13,color:T.ink2}}>Admin — gerencia membros e define status final</label>
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
             <button onClick={()=>setAdding(false)} style={{...css.btn,...css.btnSecondary}}>Cancelar</button>
-            <button onClick={submit} disabled={!form.name||!form.email||saving} style={{...css.btn,...css.btnPrimary,opacity:form.name&&form.email?1:.5}}>
-              {saving?"Cadastrando...":"Cadastrar"}
+            <button onClick={submit} disabled={!form.name||!form.email||saving}
+              style={{...css.btn,...css.btnPrimary,opacity:form.name&&form.email?1:.5}}>
+              {saving?"Salvando...":"Cadastrar"}
             </button>
           </div>
         </div>
       )}
-      <div>
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {users.map(u=>(
           <div key={u.id} style={{...css.card,display:"flex",alignItems:"center",gap:12,padding:"13px 16px"}}>
             <Avatar name={u.name} size={36} bg={T.accentLight} color={T.accent}/>
-            <div style={{flex:1}}>
+            <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:13,fontWeight:500,color:T.ink,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 {u.name}
                 {u.is_admin&&<span style={{fontSize:10,background:T.accentLight,color:T.accent,padding:"2px 7px",borderRadius:99,fontWeight:600}}>Admin</span>}
@@ -738,10 +762,13 @@ function Users({users,me,onAdd,onDel}){
               </div>
               <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{u.email}</div>
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
               {u.leads_commission&&<CommBadge ck={u.leads_commission}/>}
               {me.is_admin&&u.id!==me.id&&(
-                <button onClick={()=>onDel(u.id)} style={{...css.btn,...css.btnSm,background:"none",border:"none",color:T.redBorder,fontSize:12}}>Remover</button>
+                <button onClick={()=>onDel(u.id)}
+                  style={{...css.btn,...css.btnSm,background:"none",border:"none",color:T.red,fontSize:12}}>
+                  Remover
+                </button>
               )}
             </div>
           </div>
@@ -813,7 +840,15 @@ function Export({candidates,evaluations,finalStatuses}){
 }
 
 // ─── HOOK RESPONSIVO ──────────────────────────────────────────────────────────
-function useIsMobile(){ const [m,setM]=useState(window.innerWidth<768); useEffect(()=>{ const h=()=>setM(window.innerWidth<768); window.addEventListener("resize",h); return()=>window.removeEventListener("resize",h); },[]); return m; }
+function useIsMobile(){
+  const [m,setM]=useState(typeof window!=="undefined"&&window.innerWidth<768);
+  useEffect(()=>{
+    const h=()=>setM(window.innerWidth<768);
+    window.addEventListener("resize",h);
+    return()=>window.removeEventListener("resize",h);
+  },[]);
+  return m;
+}
 
 // ─── LAYOUT ───────────────────────────────────────────────────────────────────
 const NAV=[
@@ -918,6 +953,7 @@ export default function App(){
   const [evalCandidate,setEvalCandidate]=useState(null);
   const [rankComm,setRankComm]=useState(null);
   const [addingCandidate,setAddingCandidate]=useState(false);
+  const [dashFilter,setDashFilter]=useState(null);
   const [toast,setToast]=useState("");
   const [loading,setLoading]=useState(false);
 
@@ -1005,12 +1041,14 @@ export default function App(){
     if(page==="candidates") return(
       <CandidatesList candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses} me={me}
         onAdd={()=>setAddingCandidate(true)} onEval={c=>{ setEvalCandidate(c); setPage("evaluate"); }}
-        onImport={importCSV} onDiscard={discard} onRemanejar={remanejar} onResetEval={resetEval}/>
+        onImport={importCSV} onDiscard={discard} onRemanejar={remanejar} onResetEval={resetEval}
+        dashFilter={dashFilter} onClearFilter={()=>setDashFilter(null)}/>
     );
     if(page==="rankings") return <Rankings candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses} me={me} onSetFinal={setFinalStatus} initComm={rankComm}/>;
     if(page==="users") return <Users users={users} me={me} onAdd={addUser} onDel={delUser}/>;
     if(page==="export") return <Export candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses}/>;
-    return <Dashboard candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses}/>;
+    return <Dashboard candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses}
+      onFilter={f=>{ setDashFilter(f); setPage("candidates"); }}/>;
   };
 
   return(
