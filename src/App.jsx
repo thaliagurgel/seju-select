@@ -276,9 +276,33 @@ function Dashboard({candidates,evaluations,finalStatuses}){
 }
 
 // ─── CANDIDATOS ───────────────────────────────────────────────────────────────
-function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,onImport,onDiscard}){
+function RemanejModal({candidate,onConfirm,onClose}){
+  const [target,setTarget]=useState("");
+  const opts=Object.entries(COMMS).filter(([k])=>k!==candidate.commission1);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.35)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:T.surface,borderRadius:16,padding:24,width:"100%",maxWidth:380,boxShadow:"0 20px 40px rgba(0,0,0,.15)"}}>
+        <h3 style={{fontSize:16,fontWeight:600,color:T.ink,margin:"0 0 4px",letterSpacing:"-.3px"}}>Remanejar candidato</h3>
+        <p style={{fontSize:13,color:T.ink3,margin:"0 0 18px"}}><strong style={{color:T.ink}}>{candidate.name}</strong> — atualmente em <strong>{COMMS[candidate.commission1]?.name}</strong></p>
+        <label style={css.label}>Nova comissão</label>
+        <select value={target} onChange={e=>setTarget(e.target.value)} style={{...css.input,marginBottom:20}}>
+          <option value="">Selecione...</option>
+          {opts.map(([k,c])=><option key={k} value={k}>{c.name}</option>)}
+        </select>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:8}}>
+          <button onClick={onClose} style={{...css.btn,...css.btnSecondary}}>Cancelar</button>
+          <button onClick={()=>target&&onConfirm(target)} disabled={!target}
+            style={{...css.btn,...css.btnPrimary,opacity:target?1:.5}}>Confirmar remanejamento</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,onImport,onDiscard,onRemanejar,onResetEval}){
   const isMobile=useIsMobile(); const pad=usePad();
   const [search,setSearch]=useState("");
+  const [remanejando,setRemanejando]=useState(null); // candidate obj
   const byComm=useMemo(()=>Object.entries(COMMS).map(([k,c])=>{
     const q=norm(search);
     const list=candidates.filter(x=>x.commission1===k&&(norm(x.name).includes(q)||norm(x.period||"").includes(q)||norm(x.matricula||"").includes(q)||q===""));
@@ -331,28 +355,51 @@ function CandidatesList({candidates,evaluations,finalStatuses,me,onAdd,onEval,on
               const fs=finalStatuses.find(f=>f.candidate_id===cd.id);
               const avg=avgScore(evaluations,cd.id,cd.commission1);
               const st=fs?.status||"pendente";
+              const hasAnyEval=allEvals.length>0;
               return(
-                <div key={cd.id} style={{...css.card,display:"flex",alignItems:"center",gap:12,opacity:st==="descartado"?0.45:1,padding:"12px 14px"}}>
-                  {!isMobile&&<Avatar name={cd.name} bg={c.light} color={c.text}/>}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{cd.name}</div>
-                    <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{cd.period||"—"}{cd.matricula?` · ${cd.matricula}`:""}</div>
-                    {allEvals.length>0&&<div style={{fontSize:11,color:T.ink3,marginTop:2}}>{allEvals.length} aval. · média <strong style={{color:T.accent}}>{avg}</strong></div>}
+                <div key={cd.id} style={{...css.card,opacity:st==="descartado"?0.45:1,padding:"12px 14px"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12}}>
+                    {!isMobile&&<Avatar name={cd.name} bg={c.light} color={c.text}/>}
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:13,fontWeight:500,color:T.ink}}>{cd.name}</div>
+                      <div style={{fontSize:11,color:T.ink3,marginTop:2}}>{cd.period||"—"}{cd.matricula?` · ${cd.matricula}`:""}</div>
+                      {hasAnyEval&&<div style={{fontSize:11,color:T.ink3,marginTop:2}}>{allEvals.length} aval. · média <strong style={{color:T.accent}}>{avg}</strong></div>}
+                      {cd.remanejado_de&&<div style={{fontSize:10,color:T.amber,marginTop:2}}>↪ Remanejado de {COMMS[cd.remanejado_de]?.name}</div>}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",justifyContent:"flex-end"}}>
+                      <SBadge status={st}/>
+                      {st!=="descartado"&&(
+                        <>
+                          {me.is_admin&&!isMobile&&(
+                            <button onClick={()=>setRemanejando(cd)} style={{...css.btn,...css.btnSm,background:T.amberLight,color:T.amber,border:`1px solid ${T.amberBorder}`}}>↪ Remanejar</button>
+                          )}
+                          {me.is_admin&&st==="pendente"&&!isMobile&&(
+                            <button onClick={()=>onDiscard(cd.id)} style={{...css.btn,...css.btnSm,...css.btnDanger}}>Descartar</button>
+                          )}
+                          <button onClick={()=>onEval(cd)} style={{...css.btn,...css.btnSm,
+                            ...(myEval?.scores?{background:T.greenLight,color:T.green,border:`1px solid ${T.greenBorder}`}:css.btnPrimary),whiteSpace:"nowrap"}}>
+                            {myEval?.scores?(isMobile?"Ver":"Ver avaliação"):(isMobile?"Avaliar":"Iniciar entrevista")}
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:isMobile?"wrap":"nowrap",justifyContent:"flex-end"}}>
-                    <SBadge status={st}/>
-                    {st!=="descartado"&&(
-                      <>
-                        {me.is_admin&&st==="pendente"&&!isMobile&&(
-                          <button onClick={()=>onDiscard(cd.id)} style={{...css.btn,...css.btnSm,...css.btnDanger}}>Descartar</button>
-                        )}
-                        <button onClick={()=>onEval(cd)} style={{...css.btn,...css.btnSm,
-                          ...(myEval?.scores?{background:T.greenLight,color:T.green,border:`1px solid ${T.greenBorder}`}:css.btnPrimary),whiteSpace:"nowrap"}}>
-                          {myEval?.scores?(isMobile?"Ver":"Ver avaliação"):(isMobile?"Avaliar":"Iniciar entrevista")}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {/* Ações admin mobile */}
+                  {me.is_admin&&st!=="descartado"&&isMobile&&(
+                    <div style={{display:"flex",gap:6,marginTop:10,paddingTop:10,borderTop:`1px solid ${T.border}`}}>
+                      <button onClick={()=>setRemanejando(cd)} style={{...css.btn,...css.btnSm,flex:1,justifyContent:"center",background:T.amberLight,color:T.amber,border:`1px solid ${T.amberBorder}`}}>↪ Remanejar</button>
+                      {st==="pendente"&&<button onClick={()=>onDiscard(cd.id)} style={{...css.btn,...css.btnSm,flex:1,justifyContent:"center",...css.btnDanger}}>Descartar</button>}
+                    </div>
+                  )}
+                  {/* Zerar nota — admin */}
+                  {me.is_admin&&hasAnyEval&&(
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginTop:8,paddingTop:8,borderTop:`1px solid ${T.border}`}}>
+                      <button onClick={()=>{if(window.confirm(`Zerar TODAS as notas de ${cd.name}? Essa ação não pode ser desfeita.`)) onResetEval(cd.id);}}
+                        style={{...css.btn,...css.btnSm,background:T.redLight,color:T.red,border:`1px solid ${T.redBorder}`,fontSize:11}}>
+                        ✕ Zerar notas (Admin)
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -928,7 +975,21 @@ export default function App(){
     await supabase.from("candidates").insert(data);
     showToast("Candidato cadastrado!"); setAddingCandidate(false); setPage("candidates");
   };
-  const addUser=async(data)=>{ await supabase.from("users").insert(data); showToast("Avaliador cadastrado!"); await loadAll(); };
+  const remanejar=async(candidateId, newComm)=>{
+    const cd=candidates.find(c=>c.id===candidateId);
+    if(!cd) return;
+    await supabase.from("candidates").update({
+      commission1: newComm,
+      remanejado_de: cd.remanejado_de||cd.commission1
+    }).eq("id", candidateId);
+    showToast(`Candidato remanejado para ${COMMS[newComm]?.name}!`);
+  };
+
+  const resetEval=async(candidateId)=>{
+    await supabase.from("evaluations").delete().eq("candidate_id", candidateId);
+    await supabase.from("final_status").delete().eq("candidate_id", candidateId);
+    showToast("Notas zeradas com sucesso.");
+  };
   const delUser=async(id)=>{ await supabase.from("users").delete().eq("id",id); await loadAll(); };
 
   if(!me) return <LoginScreen onLogin={u=>setMe(u)}/>;
@@ -944,7 +1005,7 @@ export default function App(){
     if(page==="candidates") return(
       <CandidatesList candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses} me={me}
         onAdd={()=>setAddingCandidate(true)} onEval={c=>{ setEvalCandidate(c); setPage("evaluate"); }}
-        onImport={importCSV} onDiscard={discard}/>
+        onImport={importCSV} onDiscard={discard} onRemanejar={remanejar} onResetEval={resetEval}/>
     );
     if(page==="rankings") return <Rankings candidates={candidates} evaluations={evaluations} finalStatuses={finalStatuses} me={me} onSetFinal={setFinalStatus} initComm={rankComm}/>;
     if(page==="users") return <Users users={users} me={me} onAdd={addUser} onDel={delUser}/>;
